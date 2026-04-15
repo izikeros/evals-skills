@@ -16,7 +16,7 @@ Inspect an LLM eval pipeline and produce a prioritized list of problems with con
 ## Overview
 
 1. Gather eval artifacts: traces, evaluator configs, judge prompts, labeled data, metrics dashboards
-2. Run diagnostic checks across six areas
+2. Run diagnostic checks across nine areas
 3. Produce a findings report ordered by impact, with each finding linking to a fix
 
 ## Prerequisites
@@ -153,6 +153,47 @@ Look for periodic re-validation of judges or refreshed evaluation datasets.
 
 **Finding if set-and-forget:** Evaluators degrade as the pipeline evolves. Re-validate judges against fresh human labels and update eval datasets to reflect current usage.
 
+### 7. Safety and Adversarial Testing
+
+**Check:** Is the system tested for adversarial inputs?
+
+Look for: prompt injection tests, jailbreak attempts, guardrail bypass testing, PII leakage tests.
+
+**Finding if missing:** Production LLM systems face adversarial inputs. Without testing, the team has no visibility into how the system handles prompt injection, attempts to bypass safety guidelines, or requests that could leak sensitive data. At minimum, test: prompt injection resistance, PII handling, harmful content refusal, and out-of-scope request handling.
+
+**Check:** Are guardrails evaluated separately from the main pipeline?
+
+**Finding if not separated:** Guardrails (input filters, output classifiers, content policies) are themselves evaluatable components. Measure their TPR (catching bad inputs/outputs) and TNR (not blocking legitimate requests) independently.
+
+### 8. Eval Utilization and Efficiency
+
+**Check:** Are eval results actually being used to drive decisions?
+
+Ask: when was the last time an eval result blocked a deploy or changed a development decision? If the answer is "never" or "I don't know," the eval system is performing checkbox work.
+
+**Finding if unused:** Evals that don't influence decisions are wasted effort. Either integrate evals into the decision process (CI/CD gates, review requirements) or stop maintaining them.
+
+**Check:** Is the eval pipeline fast and cheap enough to run regularly?
+
+Measure: how long does the full eval suite take? What does it cost per run?
+
+**Finding if slow/expensive:** An eval suite that takes 4 hours and $200 per run will not be run frequently. Identify bottlenecks: can expensive LLM judges be replaced with cheaper models (after validation)? Can the suite be parallelized? Can a fast regression subset run on every change while the full suite runs nightly?
+
+**Check:** What percentage of known failure modes have automated evaluators?
+
+**Finding if low coverage:** Map failure categories from error analysis to existing evaluators. Gaps represent failure modes that could regress without detection.
+
+### 9. CI/CD Integration
+
+**Check:** Are evals integrated into the development pipeline?
+
+Look for: eval runs in CI, automated gating on eval results, regression detection.
+
+**Finding if not integrated:** Evals that run only manually are run infrequently. Integrate evals into CI/CD:
+- **Regression evals** (expected ~100% pass rate) run on every change and block merges on failure.
+- **Capability evals** (expected low pass rate, climbing over time) run nightly or weekly for trend tracking.
+- Handle non-determinism: run 3-5 trials per task; flag a regression only when pass@3 drops below threshold, not on a single failure.
+
 ## No Eval Infrastructure
 
 If the user has no eval artifacts (no traces, no evaluators, no labeled data):
@@ -172,7 +213,7 @@ Present findings ordered by impact. For each:
 **Fix:** [Concrete action, referencing a skill or article]
 ```
 
-Group under the six diagnostic areas. Omit areas where no problems were found.
+Group under the nine diagnostic areas. Omit areas where no problems were found.
 
 ## Anti-Patterns
 
