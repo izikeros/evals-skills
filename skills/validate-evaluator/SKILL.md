@@ -194,6 +194,49 @@ print(f"Corrected rate: {result.estimate:.2f}")
 print(f"95% CI: [{result.ci_lower:.2f}, {result.ci_upper:.2f}]")
 ```
 
+## Verifying Label Quality (Inter-Annotator Agreement)
+
+Before treating human labels as ground truth, verify that the labeling rubric is clear enough for consistent application.
+
+Have two annotators independently label 20-30 traces. Compute Cohen's Kappa:
+
+```python
+from sklearn.metrics import cohen_kappa_score
+
+kappa = cohen_kappa_score(annotator_1_labels, annotator_2_labels)
+```
+
+| Kappa | Interpretation | Action |
+|-------|---------------|--------|
+| > 0.8 | Strong agreement | Labels are reliable. Proceed with a single annotator. |
+| 0.6 - 0.8 | Moderate agreement | Review disagreements. Refine rubric definitions, then re-test. |
+| < 0.6 | Weak agreement | The rubric is ambiguous. Rewrite definitions and add examples before labeling more data. |
+
+If labels themselves are unreliable, no amount of judge tuning will produce trustworthy TPR/TNR.
+
+## Choosing TPR/TNR Targets
+
+The 90%/80% targets are defaults. Adjust based on the cost of errors:
+
+| Use Case | TPR Target | TNR Target | Rationale |
+|----------|-----------|-----------|-----------|
+| Safety-critical (compliance, medical) | > 85% | > 95% | Missing a failure (low TNR) has severe consequences |
+| Quality optimization | > 90% | > 90% | Balanced importance of catching failures and avoiding false alarms |
+| Exploratory / low-stakes | > 80% | > 80% | Acceptable for early-stage iteration where some noise is tolerable |
+
+## Statistical Power and Sample Size
+
+With 50 examples per class, the 95% confidence interval for TPR or TNR is approximately +/- 8-10 percentage points. This means you cannot reliably distinguish 85% from 95% TNR.
+
+| Examples per Class | Approximate 95% CI Width |
+|-------------------|-------------------------|
+| 30 | +/- 12-15 pp |
+| 50 | +/- 8-10 pp |
+| 100 | +/- 5-7 pp |
+| 200 | +/- 3-5 pp |
+
+For tighter bounds (e.g., reliably claiming TPR > 90%), increase to 100+ examples per class. Below 30 per class, bootstrap confidence intervals become unreliable.
+
 ## Practical Guidance
 
 - **Pin exact model versions** for LLM judges (e.g., `gpt-4o-2024-05-13`, not `gpt-4o`). Providers update models without notice, causing silent drift.
@@ -201,6 +244,12 @@ print(f"95% CI: [{result.ci_lower:.2f}, {result.ci_upper:.2f}]")
 - Use ~100 labeled examples (50 Pass, 50 Fail). Below 60, confidence intervals become wide.
 - **One trusted domain expert** is the most efficient labeling path. If not feasible, have two annotators label 20-50 traces independently and resolve disagreements before proceeding.
 - **Improving TPR narrows the confidence interval more than improving TNR.** The correction formula divides by TPR, so low TPR amplifies estimation errors into wide CIs.
+
+## Cost Optimization
+
+After validating with the most capable judge model, test whether a cheaper model achieves acceptable TPR/TNR. Run the full validation process on the cheaper model — do not assume it will perform similarly.
+
+Many well-defined criteria (format compliance, instruction following, factual grounding) can be judged by mid-tier models at 1/10th the cost. Reserve frontier models for nuanced, subjective criteria where cheaper models fail validation.
 
 ## Anti-Patterns
 
@@ -210,3 +259,4 @@ print(f"95% CI: [{result.ci_lower:.2f}, {result.ci_upper:.2f}]")
 - **Reporting dev set performance as final accuracy.** Dev numbers are optimistic. The test set gives the unbiased estimate.
 - **Raw judge scores without bias correction.** If you report an aggregate pass rate, apply the Rogan-Gladen formula (Step 7).
 - **Point estimates without confidence intervals.** A corrected rate of 85% could easily be 78-92% with small test sets. Report the range so stakeholders know how much to trust the number.
+- **Skipping inter-annotator agreement.** If human labels are inconsistent, TPR/TNR measurements are unreliable regardless of the judge's quality.
