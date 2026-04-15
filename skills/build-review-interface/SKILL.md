@@ -52,6 +52,27 @@ D = Defer             U = Undo last action
 Cmd+S = Save          Cmd+Enter = Save and next
 ```
 
+## Build vs. Use an Existing Tool
+
+For teams of 1-2 reviewers doing fewer than 200 traces, build a custom interface — it will be faster to build than to learn and configure an existing tool, and the domain-specific formatting matters more than annotation management features.
+
+For larger campaigns (multiple annotators, 500+ traces, or ongoing annotation needs), consider configuring an existing annotation platform: Label Studio, Prodigy, Argilla, or Doccano. These provide multi-annotator support, conflict resolution, IAA measurement, and project management out of the box. Custom formatting may require plugins or extensions.
+
+## Multi-Annotator Support
+
+When multiple reviewers label the same traces, the interface must support:
+
+- **Overlapping assignments:** Assign 10-20% of traces to two or more annotators independently.
+- **Blind annotation:** Reviewers must not see each other's labels during annotation.
+- **Agreement measurement:** After overlapping traces are labeled, compute Cohen's Kappa. If Kappa < 0.7, refine the rubric and definitions before using any labels as ground truth.
+- **Conflict resolution:** Surface disagreements for discussion. The domain expert resolves conflicts — do not take majority vote without review.
+
+## Annotation Quality Control
+
+**Gold standard items:** Mix 5-10% pre-labeled traces (where the correct label is known) into the annotation queue. Alert if a reviewer's accuracy on gold items drops below 85%. This catches annotator drift, fatigue, or misunderstanding of the rubric.
+
+**Annotation speed tracking:** Track time per trace. Sudden speedups may indicate careless labeling. Sudden slowdowns may indicate confusion about the rubric.
+
 ## Selecting Traces to Load
 
 Build the app to accept traces from any source (JSON/CSV file). Keep sampling logic outside the app in a separate script. Start with random sampling.
@@ -73,6 +94,8 @@ Build the app to accept traces from any source (JSON/CSV file). Keep sampling lo
 - [ ] Labels persist automatically without explicit save
 - [ ] Trace-level annotation (not span-level) as the default
 - [ ] All data rendered in its native format (markdown as HTML, code with highlighting, JSON pretty-printed, tables as HTML tables, URLs as clickable links)
+- [ ] Gold standard items mixed in (if multi-annotator)
+- [ ] Blind annotation — reviewers cannot see each other's labels
 
 ## Testing
 
