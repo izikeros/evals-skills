@@ -156,6 +156,23 @@ Use error analysis to discover specific manifestations in your pipeline. Identif
 | High | Low | -- | Hallucination or misinterpretation of retrieved content |
 | Low | -- | -- | Retrieval problem. Fix chunking, embeddings, or query preprocessing |
 
+### Evaluating Modern RAG Patterns
+
+**Agentic RAG:** When the agent decides whether, when, and what to retrieve, evaluate the retrieval decision separately from retrieval quality:
+- **Should-retrieve accuracy:** When the agent chose to retrieve, was retrieval necessary? When it chose not to retrieve, would retrieval have helped?
+- **Query formulation quality:** If the agent rewrites or decomposes queries before retrieval, compare retrieval metrics with the original query vs. the rewritten query. The rewrite should improve Recall@k.
+
+**Hybrid search (dense + sparse):** When using both vector search and keyword search (BM25), evaluate each retriever independently and the combined results. The hybrid should outperform either component alone. If it doesn't, one retriever is adding noise.
+
+**Routing evaluation:** When queries are routed to different indexes, knowledge bases, or retrieval strategies, evaluate routing accuracy separately: did the query reach the right source?
+
+**Citation and attribution accuracy:** For systems that cite sources alongside answers, evaluate whether each claim in the output maps to a specific retrieved chunk that supports it. Check for:
+- Claims with no citation
+- Citations that don't support the claim they're attached to
+- Missing citations for key facts
+
+Use write-judge-prompt to build a citation accuracy judge if code-based matching is insufficient.
+
 ### Multi-Hop Retrieval Evaluation
 
 For queries requiring information from multiple chunks:
