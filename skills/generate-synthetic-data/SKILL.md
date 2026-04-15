@@ -102,7 +102,7 @@ Review generated queries. Discard and regenerate when:
 - Content doesn't match the tuple's intent
 - Queries are too similar to each other
 
-Optional: use an LLM to rate realism on a 1-5 scale, discard below 3.
+Optional: use an LLM to rate each query: "Is this query something a real user would type? Yes or No." Discard queries rated No and regenerate.
 
 ### Step 6: Run Queries Through the Pipeline
 
@@ -119,6 +119,25 @@ When you have real queries available, don't sample randomly. Use stratified samp
 3. **Sample from each group** — ensures coverage across query types, not just the most common ones.
 
 When both real and synthetic data are available, use synthetic data to fill gaps in underrepresented query types.
+
+## Distribution Comparison
+
+When both real and synthetic queries exist, verify they cover similar territory:
+
+1. Embed all real queries and all synthetic queries.
+2. Cluster the combined set (K-means, k=10-20).
+3. Check that no cluster is dominated entirely by one source. Synthetic-only clusters may represent unrealistic scenarios. Real-only clusters may represent gaps in synthetic coverage.
+4. If synthetic queries cluster separately from real queries, the synthetic set is not representative. Add real query examples as few-shot prompts during generation.
+
+## Realistic Noise Injection
+
+LLM-generated queries tend to be grammatically clean and clearly phrased. Real users produce typos, abbreviations, incomplete sentences, and ambiguous phrasing. For 20-30% of generated queries, instruct the LLM to introduce realistic noise:
+
+```
+Rewrite this query as a real user might type it in a hurry —
+include minor typos, casual abbreviations, or incomplete phrasing.
+Do not change the intent.
+```
 
 ## Anti-Patterns
 
