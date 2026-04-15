@@ -129,9 +129,57 @@ Feed only what the judge needs for an accurate decision:
 
 For long documents, feed only the relevant snippet, not the entire document.
 
-## Model Selection
+## Judge Bias Mitigation
 
-Start with the most capable model available. The same model used for the main task works as judge (the judge performs a different, narrower task). Optimize for cost later once alignment is confirmed.
+LLM judges have documented systematic biases. Address each during prompt design:
+
+**Position bias:** LLMs prefer content presented first or last. Randomize the order of few-shot examples across runs. When doing pairwise comparison, run each pair twice with swapped positions and flag inconsistent verdicts.
+
+**Self-preference bias:** LLMs rate their own outputs higher. When the judge model is the same family as the generator (e.g., both GPT-4o), validate with extra scrutiny. If TPR/TNR stall during validation, try a judge from a different model family.
+
+**Verbosity bias:** Longer outputs receive higher scores regardless of quality. Add explicit length-neutrality instructions to the judge prompt:
+
+```
+Judge the content, not the length. A concise correct answer is a Pass.
+A verbose answer that fails the criterion is a Fail.
+```
+
+**Anchoring bias:** The first few-shot example disproportionately influences judgments. Vary few-shot example ordering across runs, or place the borderline example first (since it demonstrates nuance rather than anchoring to an extreme).
+
+**Confidence bias:** Assertive, confident language scores higher even when incorrect. Include a few-shot example where a confidently-stated wrong answer is labeled Fail, with the critique noting that confidence does not equal correctness.
+
+### Mitigation Strategies
+
+- **Temperature 0** for consistency. For borderline cases, run 3 times at temperature 0.3 and take majority vote.
+- **Multi-judge consensus** for high-stakes evaluations: run 2-3 different judge prompts (or models) and require agreement. Flag disagreements for human review.
+- **Separate model families** for generation and judging when feasible and when self-preference bias is suspected.
+
+## Pairwise Comparison Mode
+
+When the task is comparing two outputs (e.g., prompt A vs. prompt B, old model vs. new model), use pairwise judgment instead of absolute Pass/Fail. Pairwise comparison is often more reliable for subjective criteria because "A is better than B" is easier to judge than absolute quality.
+
+```json
+{
+  "critique": "string — compare both outputs against the criterion",
+  "winner": "A or B or Tie"
+}
+```
+
+**Debiasing pairwise comparisons:** Run each pair twice with A and B swapped. If the judge picks the same output regardless of position, the judgment is reliable. If the judge always picks whichever is presented first, discard the result — position bias dominates.
+
+For comparing multiple variants, use round-robin pairwise comparisons and aggregate with Elo ratings or Bradley-Terry models.
+
+## Model Selection and Cost
+
+Start with the most capable model available. The same model used for the main task works as judge (the judge performs a different, narrower task).
+
+**Cost optimization (after validation):** Once alignment is confirmed with the most capable model, test whether a cheaper model achieves acceptable TPR/TNR. Many criteria can be judged by smaller models at 1/10th the cost. Run the full validation process (validate-evaluator) on the cheaper model before switching.
+
+| Judge Model Tier | Typical Use Case | Relative Cost |
+|-----------------|------------------|---------------|
+| Frontier (GPT-4o, Claude Opus) | Initial development, complex criteria | 1x |
+| Mid-tier (GPT-4o-mini, Claude Sonnet) | Most production judges after validation | 0.1-0.3x |
+| Small (GPT-3.5, Haiku) | Simple, well-defined criteria only | 0.01-0.05x |
 
 ## Anti-Patterns
 
