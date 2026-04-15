@@ -44,6 +44,8 @@ For failures, note what went wrong. Focus on the **first thing that went wrong**
 
 Write observations, not explanations. "SQL missed the budget constraint" not "The model probably didn't understand the budget."
 
+**For complex or agentic traces** (10+ steps, parallel tool calls): the "first thing that went wrong" heuristic assumes a linear pipeline. When traces have parallel branches or independent steps, evaluate each branch independently. A single complex trace can reveal multiple distinct failure categories.
+
 **Template:**
 
 ```
@@ -140,7 +142,24 @@ Expect 2-3 rounds of reviewing and refining categories. After each round:
 
 ## Stopping Criteria
 
-Stop reviewing when new traces aren't revealing new kinds of failures. Roughly: ~100 traces reviewed with no new failure types appearing in the last 20. The exact number depends on system complexity.
+Stop reviewing when new traces aren't revealing new kinds of failures.
+
+**Saturation analysis:** Track cumulative new failure categories discovered as you review traces. Plot categories discovered (Y-axis) vs. traces reviewed (X-axis). Stop when the curve flattens — no new categories in the last 20 traces.
+
+```python
+# categories_discovered[i] = total unique categories after reviewing trace i
+# Stop when categories_discovered[n] == categories_discovered[n-20] for 20+ traces
+```
+
+**Scaling guidance by trace complexity:**
+
+| Trace Type | Typical Saturation Point |
+|------------|------------------------|
+| Simple prompt-response (1-2 steps) | ~50-80 traces |
+| Multi-step with tool calls (3-10 steps) | ~100-150 traces |
+| Complex agent traces (10+ steps, parallel tools) | ~150-300 traces |
+
+For complex agentic traces, also consider that each trace may contain multiple independent failure points — a single trace can reveal 2-3 distinct failure categories.
 
 ## Trace Sampling Strategies
 
